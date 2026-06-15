@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hack Dice</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        body {
+            background-color: #2C3E50;
+            color: #ECF0F1;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .app-name h1 {
+            font-size: 30px;
+            font-family: 'Courier New', Courier, monospace;
+            text-shadow: 2px 2px #FF0000;
+        }
+
+        .god-mode {
+            font-size: 20px;
+            font-family: 'Impact', sans-serif;
+            color: #FF9800;
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 4px #000;
+        }
+
+        .signal-indicator {
+            margin: 10px 0;
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background-color: #00FF00;
+            border-radius: 50%;
+            box-shadow: 0 0 15px 5px rgba(0, 255, 0, 0.5);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+
+        .date-time {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        #server-status {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #BDC3C7;
+        }
+
+        input[type="text"] {
+            width: 80%;
+            max-width: 300px;
+            padding: 12px;
+            font-size: 22px;
+            margin: 20px 0;
+            text-align: center;
+            border-radius: 8px;
+            border: 2px solid #34495E;
+            background-color: #34495E;
+            color: #FFF;
+        }
+
+        .button-3d {
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            margin: 10px;
+            background: linear-gradient(145deg, #34495E, #2C3E50);
+            border-radius: 15px;
+            box-shadow: 3px 3px 8px #1A252F, -3px -3px 8px #3E5872;
+            font-size: 28px;
+            line-height: 60px;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.1s;
+        }
+
+        .button-3d:active {
+            transform: scale(0.95);
+            box-shadow: 1px 1px 3px #1A252F;
+        }
+
+        #keyboard {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: center;
+        }
+
+        .action-buttons button {
+            padding: 12px 28px;
+            font-size: 18px;
+            margin: 10px;
+            border-radius: 25px;
+            background-color: #3498DB;
+            color: white;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .action-buttons button:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 3px rgba(0,0,0,0.3);
+        }
+
+        .motivational-text {
+            font-size: 20px;
+            margin-top: 25px;
+            color: #F1C40F;
+            font-weight: bold;
+            text-shadow: 2px 2px 5px #000;
+        }
+
+        /* Desain Elemen Notifikasi Mengambang (Floating Toast) */
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-50px);
+            background-color: #2ECC71;
+            color: #FFF;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.4s ease, opacity 0.4s ease;
+        }
+
+        .toast-notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast-notification.error {
+            background-color: #E74C3C;
+        }
+
+        .toast-notification.warning {
+            background-color: #F1C40F;
+            color: #2C3E50;
+        }
+    </style>
+</head>
+<body onload="OnStart()">
+
+    <div id="toast" class="toast-notification">Data Berhasil Dikirim!</div>
+
+    <div class="app-name">
+        <h1>𝐇𝐀𝐂𝐊 𝐃𝐈𝐂𝐄</h1>
+    </div>
+  
+    <div class="date-time" id="date-time">--:--:--</div>
+
+    <div id="server-status">Status Server: <span id="server">Connecting...</span></div>
+
+    <div class="signal-indicator"></div>
+    <div class="god-mode">𝐆𝐎𝐃 𝐌𝐎𝐃𝐄</div>
+    
+    <input type="text" id="data" placeholder="Masukkan angka target..." readonly>
+
+    <div id="keyboard">
+        <div class="row">
+            <div class="button-3d" onclick="handleNumberClick(1)">🦌</div>
+            <div class="button-3d" onclick="handleNumberClick(2)">🍾</div>
+            <div class="button-3d" onclick="handleNumberClick(3)">🐓</div>
+        </div>
+        <div class="row">
+            <div class="button-3d" onclick="handleNumberClick(4)">🐟</div>
+            <div class="button-3d" onclick="handleNumberClick(5)">🦀</div>
+            <div class="button-3d" onclick="handleNumberClick(6)">🦐</div>
+        </div>
+    </div>
+
+    <div class="action-buttons">
+        <button onclick="handleDeleteClick()">𝐇𝐚𝐩𝐮𝐬</button>
+        <button onclick="send()" style="background-color: #2ECC71;"><b>𝐊𝐢𝐫𝐢𝐦</b></button>
+    </div>
+
+    <div class="motivational-text">"𝐏𝐑𝐄𝐌𝐈𝐔𝐌 𝐀𝐏𝐋𝐈𝐂𝐀𝐓𝐈𝐎𝐍"</div>
+
+    <script>
+        let dbRef;
+
+        function OnStart() {
+            // 1. Inisialisasi Firebase Konfigurasi
+            const firebaseConfig = {
+                databaseURL: "https://pasukansenyap-e6c7c-default-rtdb.firebaseio.com/"
+            };
+            
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            
+            dbRef = firebase.database().ref("rsd");
+
+            // 2. Listener Firebase (Realtime Sinkronisasi)
+            dbRef.on("value", function (snapshot) {
+                let data = snapshot.val();
+                document.getElementById("server").innerText = "ONLINE";
+                document.getElementById("server").style.color = "#2ECC71";
+            }, function(error) {
+                console.error("Firebase Error: ", error);
+                document.getElementById("server").innerText = "OFFLINE";
+                document.getElementById("server").style.color = "#E74C3C";
+            });
+
+            // 3. Jalankan Waktu Realtime
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+        }
+
+        function updateDateTime() {
+            document.getElementById("date-time").innerText = new Date().toLocaleString();
+        }
+
+        function handleNumberClick(number) {
+            let dataInput = document.getElementById("data");
+            if (dataInput.value.length < 20) {
+                dataInput.value += number;
+            }
+        }
+
+        function handleDeleteClick() {
+            let dataInput = document.getElementById("data");
+            dataInput.value = dataInput.value.slice(0, -1);
+        }
+
+        // Fungsi untuk menampilkan notifikasi mengambang (Floating Toast)
+        function showToast(message, type = "success") {
+            let toast = document.getElementById("toast");
+            toast.innerText = message;
+            
+            // Reset tipe class
+            toast.className = "toast-notification";
+            
+            // Tambahkan class tipe jika bukan sukses biasa
+            if (type !== "success") {
+                toast.classList.add(type);
+            }
+            
+            // Tampilkan toast
+            toast.classList.add("show");
+            
+            // Hilangkan otomatis setelah 2.5 detik (2500 ms)
+            setTimeout(() => {
+                toast.classList.remove("show");
+            }, 2500);
+        }
+
+        function send() {
+            let dataInput = document.getElementById("data");
+            let data = dataInput.value.trim();
+
+            if (data === "") {
+                showToast("Masukkan angka terlebih dahulu!", "warning");
+                return;
+            }
+
+            // Kirim data langsung ke Firebase Realtime Database
+            dbRef.set({
+                time: new Date().getTime(),
+                results: data
+            }).then(() => {
+                // Muncul notifikasi mengambang sukses tanpa memutus layar permainan
+                showToast("Data '" + data + "' Berhasil Dikirim!");
+            }).catch((error) => {
+                // Notifikasi mengambang gagal jika ada masalah internet/firebase
+                showToast("Gagal mengirim data!", "error");
+            });
+        }
+    </script>
+</body>
+</html>
